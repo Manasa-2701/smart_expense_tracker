@@ -2,42 +2,69 @@ package com.expensetracker.controller;
 
 import com.expensetracker.model.Expense;
 import com.expensetracker.service.ExpenseService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/expenses")
-@CrossOrigin(origins = "http://localhost:3000")
 public class ExpenseController {
-    private final ExpenseService service;
+    private final ExpenseService expenseService;
 
-    public ExpenseController(ExpenseService service) {
-        this.service = service;
+    public ExpenseController(ExpenseService expenseService) {
+        this.expenseService = expenseService;
     }
 
-    @GetMapping
-    public List<Expense> getAllExpenses() {
-        return service.getAllExpenses();
+    // ✅ Add an expense
+    @PostMapping("/add")
+    public ResponseEntity<?> addExpense(@RequestBody Expense expense) {
+        try {
+            Expense savedExpense = expenseService.addExpense(expense);
+            return ResponseEntity.ok(savedExpense);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Unable to add expense: " + e.getMessage());
+        }
     }
 
-    @GetMapping("/{id}")
-    public Optional<Expense> getExpenseById(@PathVariable Long id) {
-        return service.getExpenseById(id);
+    // ✅ Get all expenses
+    @GetMapping("/all")
+    public ResponseEntity<List<Expense>> getAllExpenses() {
+        try {
+            List<Expense> expenses = expenseService.getAllExpenses();
+            
+            if (expenses.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+
+            return new ResponseEntity<>(expenses, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    @PostMapping
-    public Expense addExpense(@RequestBody Expense expense) {
-        return service.addExpense(expense);
-    }
+    // ✅ Get category-wise expenses
+    @GetMapping("/category-wise")
+    public ResponseEntity<Map<String, Double>> getExpensesByCategory(
+            @RequestParam Long userId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        try {
+            Map<String, Double> categoryExpenses = expenseService.getCategoryWiseExpenses(userId, startDate, endDate);
 
-    @DeleteMapping("/{id}")
-    public void deleteExpense(@PathVariable Long id) {
-        service.deleteExpense(id);
-    }
+            if (categoryExpenses.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
 
-    @GetMapping("/category/{category}")
-    public List<Expense> getExpensesByCategory(@PathVariable String category) {
-        return service.getExpensesByCategory(category);
+            return new ResponseEntity<>(categoryExpenses, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
